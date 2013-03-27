@@ -1,20 +1,13 @@
-<?php
-/*
-Plugin Name: WPSEA Meetup Events to Posts
-Description: Creates WordPress posts from events on Meetup.com 
-Version: 0.1
-Author: Seattle WordPress Meetup
-Author URI: https://github.com/WordPress-Seattle
-*/
- 
+<?php 
 if( $_SERVER[ 'SCRIPT_FILENAME' ] == __FILE__ )
 	die( 'Access denied.' );
 
 if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 {
 	class wpSeaMeetupEventsToPosts
-	{	
+	{
 		const PREFIX			= 'wsmetp_';
+		const VERSION			= '0.1a';
 		const POST_TYPE_NAME	= 'Meetup Event';
 		const POST_TYPE_SLUG	= 'wpsea-meetup-event';
 		/**
@@ -43,8 +36,8 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 		 */
 		public function activate( $networkWide )
 		{
-			self::createPostType();
-			self::createTaxonomies();
+			$this->create_post_type();
+			flush_rewrite_rules();
 		}
 
 		/**
@@ -54,6 +47,7 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 		 */
 		public function deactivate()
 		{
+			flush_rewrite_rules();
 		} 
 		
 		/**
