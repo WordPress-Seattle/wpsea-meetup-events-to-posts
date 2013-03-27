@@ -1,18 +1,37 @@
 <?php
 /*
 Plugin Name: WPSEA Meetup Events to Posts
-Description: Creates WordPress posts from events on Meetup.com 
+Plugin URI: https://github.com/WordPress-Seattle/wpsea-meetup-events-to-posts
+Description: Creates WordPress posts from a Meetup group's events 
 Version: 0.1a
 Author: Seattle WordPress Meetup
-Author URI: https://github.com/WordPress-Seattle
+Author URI: http://wpseattle.org
+License: GPL2
 */
+
+/*  
+ * Copyright 2011-2012 Seattle WordPress Meetup (website : http://wpseattle.org)
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2, as 
+ * published by the Free Software Foundation.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 
 if( $_SERVER[ 'SCRIPT_FILENAME' ] == __FILE__ )
 	die( 'Access denied.' );
 
 define( 'WSMETP_NAME',					'WPSEA Meetup Events to Posts' );
 define( 'WSMETP_REQUIRED_PHP_VERSION',	'5.3' );	// because of __DIR__
-define( 'WSMETP_REQUIRED_WP_VERSION',	'3.0' );	// because of custom post type support
+define( 'WSMETP_REQUIRED_WP_VERSION',	'3.5' );	// because of WP_Post class
 
 /**
  * Checks if the system requirements are met
