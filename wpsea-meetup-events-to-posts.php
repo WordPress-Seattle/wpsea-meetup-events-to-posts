@@ -436,9 +436,16 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 			// meetup_api_key
 			$new_settings[ 'meetup_api_key' ] = strip_tags( $new_settings[ 'meetup_api_key' ] );
 			
-			// meetup_group_url_name -- Strip out URL bits in case the user pasted one in
-			$group_url_name_trim = array( 'https', 'http', '://', 'www.', 'meetup.com', '/' );
-			$new_settings[ 'meetup_group_url_name' ] = str_replace( $group_url_name_trim, '', strip_tags( $new_settings[ 'meetup_group_url_name' ] ) );
+			// meetup_group_url_name
+			$new_settings[ 'meetup_group_url_name' ] = strip_tags( $new_settings[ 'meetup_group_url_name' ] );
+			if( 'http' == substr( $new_settings[ 'meetup_group_url_name' ], 0, 4 ) )
+			{
+				// Strip out URL bits in case the user pasted one in
+				$group_url_name_trim = array( 'https', 'http', '://', 'www.', 'meetup.com/' );
+				$new_settings[ 'meetup_group_url_name' ] = str_replace( $group_url_name_trim, '', $new_settings[ 'meetup_group_url_name' ] );
+				$new_settings[ 'meetup_group_url_name' ] = explode( '/', $new_settings[ 'meetup_group_url_name' ] );
+				$new_settings[ 'meetup_group_url_name' ] = $new_settings[ 'meetup_group_url_name' ][ 0 ];
+			}
 			
 			return $new_settings;
 		}

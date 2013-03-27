@@ -8,6 +8,6 @@
 <?php if( $field[ 'label_for' ] == self::PREFIX . 'meetup_group_url_name' ) : ?>
 	
 	<input id="<?php echo esc_attr( self::PREFIX .'meetup_group_url_name' ); ?>" name="<?php echo esc_attr( self::PREFIX .'settings[meetup_group_url_name]' ); ?>" class="regular-text" value="<?php echo esc_attr( $this->settings[ 'meetup_group_url_name' ] ); ?>" />
-	<span class="description"> If the URL of your Meetup.com page is <code>http://www.meetup.com/SeattleWordPressMeetup/</code>, then you would enter <code>SeattleWordPressMeetup</code> in this field.</span>
+	<span class="description"> If the URL of your Meetup.com page is <code>http://www.meetup.com/SeattleWordPressMeetup/</code>, then you would enter <code>SeattleWordPressMeetup</code> in this field. You can also just paste the full URL here, and the plugin will extract the name.</span>
 
 <?php endif; ?>
