@@ -1,4 +1,5 @@
-<?php 
+<?php
+
 if( $_SERVER[ 'SCRIPT_FILENAME' ] == __FILE__ )
 	die( 'Access denied.' );
 
@@ -16,16 +17,16 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 		 */
 		public function __construct()
 		{
-			add_action( 'init',						array( $this, 'init' ) );
-			add_action( 'init',						array( $this, 'create_post_type' ) );
-			add_action( 'admin_init',				array( $this, 'add_meta_boxes' ) );
-			add_action( 'save_post',				array( $this, 'save_post' ), 10, 2 );
+			add_action( 'init',										array( $this, 'init' ) );
+			add_action( 'init',										array( $this, 'create_post_type' ) );
+			add_action( 'admin_init',								array( $this, 'add_meta_boxes' ) );
+			add_action( 'save_post',								array( $this, 'save_post' ), 10, 2 );
+			add_action( self::PREFIX . 'cron_import_meetup_events',	array( $this, 'import_meetup_events' ) );
+			
+			add_filter( 'cron_schedules',							array( $this, 'add_custom_cron_intervals' ) );
 			
 			//add_shortcode( 'cpt-shortcode-example',	array( $this, 'shortcode_wpsea_meetup_posts' );
-			
-			// run cron job to import events into posts
-				//$this->load_meetup_api(); only call when needed by cron job
-			// shortcode makes sense? or cpt template in the theme? 
+				// does a shortcode makes sense to output the posts? or use a cpt template in the theme instead? 
 		}
 		
 		/**
@@ -37,6 +38,7 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 		public function activate( $networkWide )
 		{
 			$this->create_post_type();
+			$this->register_cron_jobs();
 			flush_rewrite_rules();
 		}
 
@@ -47,6 +49,7 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 		 */
 		public function deactivate()
 		{
+			wp_clear_scheduled_hook( self::PREFIX . 'import_meetup_events' );
 			flush_rewrite_rules();
 		} 
 		
@@ -62,6 +65,12 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 			
 			$this->meetup_api_dir =  __DIR__ . '/includes/meetup-api-client-for-php';
 		}
+		
+	
+	
+		/*
+		 * Custom post type 
+		 */
 
 		/**
 		 * Registers the custom post type
@@ -268,6 +277,65 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 			return apply_filters( self::PREFIX . 'default-cpt-shortcode-example-attributes', $attributes );
 		}
 		
+		
+		
+		/*
+		 * Cron jobs 
+		 */
+		
+		/**
+		 * Adds custom intervals to the cron schedule.
+		 * @mvc Model
+		 * @author Ian Dunn <ian@iandunn.name>
+		 * @param array $schedules
+		 * @return array
+		 */
+		public function add_custom_cron_intervals( $schedules )
+		{
+			$schedules[ self::PREFIX . 'debug' ] = array(
+				'interval'	=> 5,
+				'display'	=> 'Every 5 seconds'
+			);
+			
+			return $schedules;
+		}
+		
+		/**
+		 * Registers cron jobs with WordPress
+		 * @mvc Model
+		 * @author Ian Dunn <ian@iandunn.name>
+		 */
+		protected function register_cron_jobs()
+		{ 
+			if( wp_next_scheduled( self::PREFIX . 'cron_import_meetup_events' ) === false )
+			{
+				wp_schedule_event(
+					current_time( 'timestamp' ),
+					self::PREFIX . 'debug', // TODO: 'hourly',
+					self::PREFIX . 'cron_import_meetup_events'
+				);
+			}
+		}
+
+		/**
+		 * Import Meetup.com events into WordPress posts
+		 * @mvc Model
+		 * @author Ian Dunn <ian@iandunn.name>
+		 * @param array $schedules
+		 * @return array
+		 */
+		public function import_meetup_events()
+		{
+			if( did_action( self::PREFIX . 'cron_import_meetup_events' ) !== 1 )
+				return;
+			
+			// TODO: this is getting run twice? make sure it doesn't
+			
+			$this->load_meetup_api();
+			$events = $this->get_recent_meetup_events();
+			$this->create_posts_from_events( $events );
+		}
+		
 		/**
 		 * Load the Meetup API if it hasn't been loaded yet
 		 * @author Ian Dunn <ian@iandunn.name>
@@ -278,21 +346,51 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 				return;
 			
 			// Note: Most of this will probably happen in the API itself in the future
-			require_once( $this->meetup_api_dir .'/Meetup.php' );
-			require_once( $this->meetup_api_dir .'/MeetupConnection.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupApiResponse.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupApiRequest.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupExceptions.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupCheckins.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupEvents.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupFeeds.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupGroups.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupMembers.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupPhotos.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupRsvps.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupTopics.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupVenues.class.php' );
-			require_once( $this->meetup_api_dir .'/MeetupOAuth2Helper.class.php' );
+			require_once( $this->meetup_api_dir . '/Meetup.php' );
+			require_once( $this->meetup_api_dir . '/MeetupConnection.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupApiResponse.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupApiRequest.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupExceptions.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupCheckins.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupEvents.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupFeeds.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupGroups.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupMembers.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupPhotos.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupRsvps.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupTopics.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupVenues.class.php' );
+			require_once( $this->meetup_api_dir . '/MeetupOAuth2Helper.class.php' );
+		}
+
+		/**
+		 * Pulls recently created events from the Meetup API
+		 * @author Ian Dunn <ian@iandunn.name>
+		 * @return array
+		 */
+		protected function get_recent_meetup_events()
+		{
+			// TODO: possible to get ones we don't already have? if not just grab recent ones, and let the other function take care of making sure no dupes are created
+			return array( 'test', 'test2' );
+		}
+		
+		/**
+		 * Creates WordPress posts from Meetup events
+		 * @author Ian Dunn <ian@iandunn.name>
+		 * @param array $events
+		 */
+		protected function create_posts_from_events( $events )
+		{
+			if( $events )
+			{
+				foreach( $events as $event )
+				{
+					if( true )	// TODO: post doesn't already exist for this event
+					{
+						// TODO: wp_insert_post();
+					}
+				}
+			}
 		}
 	} // end wpSeaMeetupEventsToPosts
 	
