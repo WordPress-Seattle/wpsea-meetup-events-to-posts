@@ -34,8 +34,7 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 				array( $this, 'add_plugin_action_links' )
 			);
 			
-			//add_shortcode( 'cpt-shortcode-example',	array( $this, 'shortcode_wpsea_meetup_posts' );
-				// does a shortcode makes sense to output the posts? or use a cpt template in the theme instead? 
+			add_shortcode( 'meetup-events',							array( $this, 'shortcode_meetup_events' ) );
 		}
 		
 		/**
@@ -100,7 +99,7 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 				
 				if( is_wp_error( $post_type ) )
 				{
-					// TODO: add admin notice 
+					// TODO: add admin notice or throw exception or something
 				}
 			}
 		}
@@ -135,7 +134,7 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 				'singular_label'		=> self::POST_TYPE_NAME,
 				'public'				=> true,
 				'menu_position'			=> 20,
-				'hierarchical'			=> true,
+				'hierarchical'			=> false,
 				'capability_type'		=> 'post',
 				'has_archive'			=> true,
 				'rewrite'				=> array( 'slug' => self::POST_TYPE_SLUG, 'with_front' => false ),
@@ -178,7 +177,7 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 			switch( $box[ 'id' ] )
 			{
 				case self::PREFIX . 'event-details':
-					//$exampleBoxField = get_post_meta( $post->ID, self::PREFIX . 'example-box-field', true );
+					// TODO: grab any data needed for the view
 					$view = 'metabox-event-details.php';
 				break;
 			}
@@ -234,58 +233,63 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 			*/
 		}
 		
+	
+		
+		/*
+		 * Shortcodes 
+		 */
+		
 		/**
-		 * Defines the [wpps-cpt-shortcode] shortcode
+		 * Generates the output for the [meetup-events] shortcode
 		 * @mvc Controller
 		 * @author Ian Dunn <ian@iandunn.name>
 		 * @param array $attributes
 		 * return string
-		public function cptShortcodeExample( $attributes ) 
+		 */
+		public function shortcode_meetup_events( $attributes )
 		{
-			$attributes = apply_filters( self::PREFIX . 'cpt-shortcode-example-attributes', $attributes );
-			$attributes = self::validateCPTShortcodeExampleAttributes( $attributes );
+			$attributes = apply_filters( self::PREFIX . 'meetup-events-shortcode-attributes', $attributes );
+			$attributes = self::validate_meetup_events_shortcode_attributes( $attributes );
+			
+			$event_posts	= get_posts( array(
+				'numberposts'	=> -1,
+				'post_type'		=> self::POST_TYPE_SLUG,
+				
+				// TODO: only query ones where the ending timestamp is in the future? probably don't need to display old ones
+			) );
 			
 			ob_start();
-			require_once( dirname( __DIR__ ) . '/views/wpps-cpt-example/shortcode-cpt-shortcode-example.php' );
+			require_once( __DIR__ . '/views/shortcode-meetup-events.php' );
 			$output = ob_get_clean();
 			
-			return apply_filters( self::PREFIX . 'cpt-shortcode-example', $output );
+			return apply_filters( self::PREFIX . 'meetup-events-shortcode-return', $output );
 		}
-		*/
 		 
 		/**
-		 * Validates the attributes for the [cpt-shortcode-example] shortcode
+		 * Validates the attributes for the [meetup-events] shortcode
 		 * @author Ian Dunn <ian@iandunn.name>
 		 * @param array $attributes
 		 * return array
 		 */
-		protected function validate_event_details_attributes( $attributes )
+		protected function validate_meetup_events_shortcode_attributes( $attributes )
 		{
-			$defaults = self::get_default_event_details_attributes();
+			$defaults = self::get_default_meetup_event_shortcode_attributes();
 			$attributes = shortcode_atts( $defaults, $attributes );
 			
-			/*
-			if( $attributes[ 'foo' ] != 'valid data' )
-				$attributes[ 'foo' ] = $defaults[ 'foo' ];
-			*/
-			
-			return apply_filters( self::PREFIX . 'validate-event-details-attributes', $attributes );
+			return apply_filters( self::PREFIX . 'validate-meetup-events-shortcode-attributes', $attributes );
 		}
 
 		/**
-		 * Defines the default arguments for the [cpt-shortcode-example] shortcode
+		 * Defines the default arguments for the [meetup-events] shortcode
 		 * @author Ian Dunn <ian@iandunn.name>
 		 * @param array
 		 * @return array
 		 */
-		protected function get_default_event_details_attributes()
+		protected function get_default_meetup_event_shortcode_attributes()
 		{
-			$attributes = array(
-				'foo'	=> 'bar',
-				'bar'	=> 'foo'
-			);
+			$attributes = array();
 			
-			return apply_filters( self::PREFIX . 'default-cpt-shortcode-example-attributes', $attributes );
+			return apply_filters( self::PREFIX . 'default-meetup-events-shortcode-attributes', $attributes );
 		}
 		
 		
@@ -429,8 +433,10 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 		{
 			$new_settings = shortcode_atts( $this->settings, $new_settings );
 			
+			// meetup_api_key
 			$new_settings[ 'meetup_api_key' ] = strip_tags( $new_settings[ 'meetup_api_key' ] );
 			
+			// meetup_group_url_name -- Strip out URL bits in case the user pasted one in
 			$group_url_name_trim = array( 'https', 'http', '://', 'www.', 'meetup.com', '/' );
 			$new_settings[ 'meetup_group_url_name' ] = str_replace( $group_url_name_trim, '', strip_tags( $new_settings[ 'meetup_group_url_name' ] ) );
 			
@@ -453,8 +459,8 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 		public function add_custom_cron_intervals( $schedules )
 		{
 			$schedules[ self::PREFIX . 'debug' ] = array(
-				'interval'	=> 5,
-				'display'	=> 'Every 5 seconds'
+				'interval'	=> 15,
+				'display'	=> 'Every 15 seconds'
 			);
 			
 			return $schedules;
@@ -471,7 +477,7 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 			{
 				wp_schedule_event(
 					current_time( 'timestamp' ),
-					self::PREFIX . 'debug', // TODO: 'hourly',
+					self::PREFIX . 'debug', // TODO: set to 'hourly' when done testing
 					self::PREFIX . 'cron_import_meetup_events'
 				);
 			}
@@ -501,47 +507,53 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 		 */
 		protected function load_meetup_api()
 		{
-			if( defined( 'MEETUP_API_URL' ) )
-				return;
-			
-			// Note: Most of this will probably happen in the API library itself in the future
-			require_once( $this->meetup_api_dir . '/Meetup.php' );
-			require_once( $this->meetup_api_dir . '/MeetupConnection.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupApiResponse.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupApiRequest.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupExceptions.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupCheckins.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupEvents.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupFeeds.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupGroups.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupMembers.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupPhotos.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupRsvps.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupTopics.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupVenues.class.php' );
-			require_once( $this->meetup_api_dir . '/MeetupOAuth2Helper.class.php' );
+			if( !defined( 'MEETUP_API_URL' ) )
+			{
+				// Note: Most of this will probably happen in the API library itself in the future
+				require_once( $this->meetup_api_dir . '/Meetup.php' );
+				require_once( $this->meetup_api_dir . '/MeetupConnection.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupApiResponse.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupApiRequest.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupExceptions.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupCheckins.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupEvents.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupFeeds.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupGroups.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupMembers.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupPhotos.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupRsvps.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupTopics.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupVenues.class.php' );
+				require_once( $this->meetup_api_dir . '/MeetupOAuth2Helper.class.php' );
+			}
 			
 			if( $this->settings[ 'meetup_api_key' ] && class_exists( 'MeetupKeyAuthConnection' ) )
 				$this->meetup_api_connection = new MeetupKeyAuthConnection( $this->settings[ 'meetup_api_key' ] );
+			else
+			{
+				// TODO: create an admin notice or throw an exception or something
+			}
 		}
 
 		/**
-		 * Pulls recently created events from the Meetup API
+		 * Pulls upcoming created events from the Meetup API
 		 * @author Ian Dunn <ian@iandunn.name>
 		 * @return array
 		 */
 		protected function get_upcoming_meetup_events()
 		{
-			if( !$this->meetup_api_connection || !$this->settings[ 'meetup_group_url_name' ] || !class_exists( 'MeetupEvents' ) )
-				return array();
+			$upcoming_events = array();
 			
-			$events	= new MeetupEvents( $this->meetup_api_connection );
-			$events	= $events->getEvents( array(
-				'group_urlname'	=> $this->settings[ 'meetup_group_url_name' ],
-				'status'		=> 'upcoming',
-			) );
+			if( $this->meetup_api_connection && $this->settings[ 'meetup_group_url_name' ] && class_exists( 'MeetupEvents' ) )
+			{
+				$events_request		= new MeetupEvents( $this->meetup_api_connection );
+				$upcoming_events	= $events_request->getEvents( array(
+					'group_urlname'	=> $this->settings[ 'meetup_group_url_name' ],
+					'status'		=> 'upcoming',
+				) );
+			}
 			
-			return $events;
+			return $upcoming_events;
 		}
 		
 		/**
@@ -551,13 +563,13 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 		 */
 		protected function create_update_posts_from_events( $events )
 		{
-			//var_dump($events);	// TODO
+			var_dump($events);	// TODO
 			
 			
 			if( $events )
 			{
 				$existing_post_id_map = $this->get_existing_post_id_map();
-				return;
+				return;		// TODO: not ready to insert yet
 				
 				// Loop through all the events we were given 
 				foreach( $events as $event )

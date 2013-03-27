@@ -75,9 +75,9 @@ if( wsmetp_requirements_met() )
 	
 	if( class_exists( 'wpSeaMeetupEventsToPosts' ) )
 	{
-		$wsmetp = new wpSeaMeetupEventsToPosts();
-		register_activation_hook( __FILE__,		array( $wsmetp, 'activate' ) );
-		register_deactivation_hook( __FILE__,	array( $wsmetp, 'deactivate' ) );
+		$GLOBALS[ 'wsmetp' ] = new wpSeaMeetupEventsToPosts();
+		register_activation_hook( __FILE__,		array( $GLOBALS[ 'wsmetp' ], 'activate' ) );
+		register_deactivation_hook( __FILE__,	array( $GLOBALS[ 'wsmetp' ], 'deactivate' ) );
 	}
 }
 else
