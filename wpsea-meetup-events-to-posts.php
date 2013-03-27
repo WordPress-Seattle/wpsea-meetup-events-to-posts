@@ -492,7 +492,7 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 			// TODO: this is getting run twice? make sure it doesn't
 			
 			$this->load_meetup_api();
-			$this->create_posts_from_events( $this->get_recent_meetup_events() );
+			$this->create_update_posts_from_events( $this->get_upcoming_meetup_events() );
 		}
 		
 		/**
@@ -530,44 +530,98 @@ if( !class_exists( 'wpSeaMeetupEventsToPosts' ) )
 		 * @author Ian Dunn <ian@iandunn.name>
 		 * @return array
 		 */
-		protected function get_recent_meetup_events()
+		protected function get_upcoming_meetup_events()
 		{
 			if( !$this->meetup_api_connection || !$this->settings[ 'meetup_group_url_name' ] || !class_exists( 'MeetupEvents' ) )
 				return array();
-			  
-			// TODO: is it possible to only get ones we don't already have? if not just grab recent ones, and rely on create_posts_from_events() to make sure no dupes are created
 			
-			$events = new MeetupEvents( $this->meetup_api_connection );
-			return $events->getEvents( array( 'group_urlname' => $this->settings[ 'meetup_group_url_name' ] ) );
+			$events	= new MeetupEvents( $this->meetup_api_connection );
+			$events	= $events->getEvents( array(
+				'group_urlname'	=> $this->settings[ 'meetup_group_url_name' ],
+				'status'		=> 'upcoming',
+			) );
+			
+			return $events;
 		}
 		
 		/**
-		 * Creates WordPress posts from Meetup events
+		 * Creates or updates WordPress posts from Meetup events
 		 * @author Ian Dunn <ian@iandunn.name>
 		 * @param array $events
 		 */
-		protected function create_posts_from_events( $events )
+		protected function create_update_posts_from_events( $events )
 		{
-			var_dump($events);	// TODO
+			//var_dump($events);	// TODO
+			
 			
 			if( $events )
 			{
+				$existing_post_id_map = $this->get_existing_post_id_map();
+				return;
+				
+				// Loop through all the events we were given 
 				foreach( $events as $event )
 				{
-					if( true )	// TODO: post doesn't already exist for this event
+					$event_post = array(
+						'post_author'	=> '?',		// TODO get admin id. can't assume it'll be 1, because that account may have been deleted. have to find all admins and pick the first one, or something like that.
+						'post_content'	=> '?',		// TODO: this isn't included in the API results. wtf mate? maybe have to make more specific calls to API for details
+						'post_status'	=> 'publish',
+						'post_title'	=> '?',
+						'post_type'		=> self::POST_TYPE_SLUG,
+					);
+					
+					if( array_key_exists( $event[ 'id' ], $existing_post_id_map ) )
 					{
-						$new_post = new WP_Post();
-						$new_post->post_author	= '?';	// TODO
-						$new_post->post_content	= '?';
-						$new_post->post_title	= '?';
-						$new_post->post_type	= self::POST_TYPE_SLUG;
+						// A post has already been created for this event, so just update it
 						
-						// TODO: wp_insert_post( $new_post );
-						
-						// TODO: update post meta w/ custom fields like meetup_event_id, location, date, time, etc
+						$event_post[ 'ID' ] = $existing_post_id_map[ $event[ 'id' ] ];
+						wp_update_post( $event_post );
 					}
+						
+					else
+					{
+						// A post hasn't been created for this event yet, so create one
+						
+						$event_post[ 'ID' ] = wp_insert_post( $event_post, true );
+						
+						if( is_wp_error( $event_post[ 'ID' ] ) )
+						{
+							// TODO: add admin notice, or throw exception, or somethign
+						}
+					}
+					
+					// TODO: whether creating or updating, update post meta w/ custom fields like meetup_event_id, location, date, time, etc
 				}
 			}
+		}
+
+		/**
+		 * Retrieves the existing event posts and maps their WordPress post ID to the Meetup.com event ID
+		 * @author Ian Dunn <ian@iandunn.name>
+		 * @return array
+		 */
+		protected function get_existing_post_id_map()
+		{
+			$map			= array();
+			$event_posts	= get_posts( array(
+				'numberposts'	=> -1,
+				'post_type'		=> self::POST_TYPE_SLUG,
+				'post_status'	=> 'any',
+				
+				// TODO: only query ones where the ending timestamp is in the future? probably don't need to bother updating previous
+			) );
+			
+			if( $event_posts )
+			{
+				foreach( $event_posts as $event_post )
+				{	
+					if( $event_post->meetup_event_id )
+						$map[ $event_post->meetup_event_id ] = $event_post->ID;
+				}
+			}
+			
+			var_dump($map);	// TODO: test once get some real data imported
+			return $map;
 		}
 	} // end wpSeaMeetupEventsToPosts
 	

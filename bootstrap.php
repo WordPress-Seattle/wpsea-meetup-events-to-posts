@@ -31,7 +31,7 @@ if( $_SERVER[ 'SCRIPT_FILENAME' ] == __FILE__ )
 
 define( 'WSMETP_NAME',					'WPSEA Meetup Events to Posts' );
 define( 'WSMETP_REQUIRED_PHP_VERSION',	'5.3' );	// because of __DIR__
-define( 'WSMETP_REQUIRED_WP_VERSION',	'3.5' );	// because of WP_Post class
+define( 'WSMETP_REQUIRED_WP_VERSION',	'3.5' );	// because of WP_Post goodness
 
 /**
  * Checks if the system requirements are met
